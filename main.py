@@ -27,27 +27,36 @@
 # This is getting really challenging now — and is entirely
 # optional. Don't forget about your assessment!
 
-def play_game():
-  board = [
-    [".", ".", "."],
-    [".", ".", "."],
-    [".", ".", "."]
-  ]
+
+def play_game(board_size):
+  board = construct_board(board_size)
   player = "X"
   while not is_game_over(board):
     print(print_board(board))
+    print(f"{slots_remaining(board)} goes left")
     print("It's " + player + "'s turn.")
-    # `input` asks the user to type in a string
-    # We then need to convert it to a number using `int`
-    row = int(input("Enter a row: "))
-    column = int(input("Enter a column: "))
-    board = make_move(board, row, column, player)
+    coords = request_coords(board)
+    board = make_move(board, coords, player)
     if player == "X":
       player = "O"
     else:
       player = "X"
   print(print_board(board))
   print("Game over!")
+
+
+def construct_board(size):
+  return [['.' for cell in range(size)] for row in range(size)]
+
+
+def request_coords(board):
+  row = int(input("Enter a row: "))
+  column = int(input("Enter a column: "))
+  if board[row][column] != '.':
+    print(f"{row},{column} is taken! Choose another slot:")
+    return request_coords(board)
+  return [row, column]
+
 
 def print_board(board):
   formatted_rows = []
@@ -56,59 +65,74 @@ def print_board(board):
   grid = "\n".join(formatted_rows)
   return grid
 
-def make_move(board, row, column, player):
-  board[row][column] = player
+
+def make_move(board, coords, player):
+  x, y = coords
+  board[x][y] = player
   return board
 
 
-# This function will extract three cells from the board
-def get_cells(board, coord_1, coord_2, coord_3):
-  return [
-    board[coord_1[0]][coord_1[1]],
-    board[coord_2[0]][coord_2[1]],
-    board[coord_3[0]][coord_3[1]]
-  ]
+def get_cells(board, *coords):
+  output = []
+  for coord in coords:
+    x, y = coord
+    output.append(board[x][y])
+  return output
+
 
 # This function will check if the group is fully placed
 # with player marks, no empty spaces.
-def is_group_complete(board, coord_1, coord_2, coord_3):
-  cells = get_cells(board, coord_1, coord_2, coord_3)
+def is_group_complete(board, *coords):
+  cells = get_cells(board, *coords)
   return "." not in cells
 
+
 # This function will check if the group is all the same
-# player mark: X X X or O O O
-def are_all_cells_the_same(board, coord_1, coord_2, coord_3):
-  cells = get_cells(board, coord_1, coord_2, coord_3)
-  return cells[0] == cells[1] and cells[1] == cells[2]
+def are_all_cells_the_same(board, *coords):
+  cells = get_cells(board, *coords)
+  entries = set(cells)
+  return len(entries) == 1 and '.' not in entries
 
-# We'll make a list of groups to check:
 
-groups_to_check = [
+def winning_conditions(size):
+  conditions = []
   # Rows
-  [(0, 0), (0, 1), (0, 2)],
-  [(1, 0), (1, 1), (1, 2)],
-  [(2, 0), (2, 1), (2, 2)],
+  for x in range(size):
+    conditions.append([(x, y) for y in range(size)])
+  
   # Columns
-  [(0, 0), (1, 0), (2, 0)],
-  [(0, 1), (1, 1), (2, 1)],
-  [(0, 2), (1, 2), (2, 2)],
-  # Diagonals
-  [(0, 0), (1, 1), (2, 2)],
-  [(0, 2), (1, 1), (2, 0)]
-]
+  for y in range(size):
+    conditions.append([(x, y) for x in range(size)])
+  
+  # Diagonal 'backslash'
+  conditions.append([(z, z) for z in range(size)])
+  
+  # Diagonal 'forward slash'
+  conditions.append([(z, size - z -1) for z in range(size)])
+  
+  return conditions
+
+
+def slots_remaining(board):
+  count = 0
+  for row in board:
+    for cell in row:
+      if cell == '.':
+        count += 1
+  return count
+
 
 def is_game_over(board):
+  if slots_remaining(board) == 0:
+    return True
   # We go through our groups
-  for group in groups_to_check:
-    # If any of them are empty, they're clearly not a
-    # winning row, so we skip them.
-    if is_group_complete(board, group[0], group[1], group[2]):
-      if are_all_cells_the_same(board, group[0], group[1], group[2]):
-        return True # We found a winning row!
-        # Note that return also stops the function
-  return False # If we get here, we didn't find a winning row
+  for group in winning_conditions(len(board)):
+    # Skip uncompleted lines
+    if is_group_complete(board, *[group[i] for i in range(len(board))]):
+      if are_all_cells_the_same(board, *[group[i] for i in range(len(board))]):
+        return True
 
-# And test it out:
 
+board_size = int(input("Enter a board size: "))
 print("Game time!")
-play_game()
+play_game(board_size)
